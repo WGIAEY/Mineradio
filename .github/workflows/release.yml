@@ -35,15 +35,12 @@ jobs:
       - name: Rename artifacts (apple / intel)
         run: node build/rename-mac-artifacts.js
 
-      - name: Upload DMG
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Mineradio-*-${{ matrix.arch == 'arm64' && 'apple' || 'intel' }}.dmg
-
-      - name: Upload ZIP
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/Mineradio-*-${{ matrix.arch == 'arm64' && 'apple' || 'intel' }}.zip
+          files: |
+            dist/Mineradio-*-${{ matrix.arch == 'arm64' && 'apple' || 'intel' }}.dmg
+            dist/Mineradio-*-${{ matrix.arch == 'arm64' && 'apple' || 'intel' }}.zip
 
   # ── Windows build ─────────────────────────────────────────────
   windows:
@@ -63,12 +60,9 @@ jobs:
       - name: Build Windows
         run: npx electron-builder --win nsis --x64 --publish never
 
-      - name: Upload Setup
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/Mineradio-*-Setup.exe
-
-      - name: Upload latest.yml
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/latest.yml
+          files: |
+            dist/Mineradio-*-Setup.exe
+            dist/latest.yml
