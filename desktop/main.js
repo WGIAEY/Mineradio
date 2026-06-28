@@ -47,9 +47,21 @@ const CHROMIUM_PERFORMANCE_SWITCHES = [
   ['disable-background-timer-throttling'],
   ['disable-renderer-backgrounding'],
   ['disable-backgrounding-occluded-windows'],
-  ['force_high_performance_gpu'],
-  ['use-angle', 'd3d11'],
 ];
+if (process.platform === 'win32') {
+  CHROMIUM_PERFORMANCE_SWITCHES.push(
+    ['force_high_performance_gpu'],
+    ['use-angle', 'd3d11'],
+  );
+} else if (process.platform === 'darwin') {
+  CHROMIUM_PERFORMANCE_SWITCHES.push(
+    ['use-angle', 'metal'],
+  );
+} else {
+  CHROMIUM_PERFORMANCE_SWITCHES.push(
+    ['use-angle', 'opengl'],
+  );
+}
 for (const [name, value] of CHROMIUM_PERFORMANCE_SWITCHES) {
   if (value == null) app.commandLine.appendSwitch(name);
   else app.commandLine.appendSwitch(name, value);
@@ -1028,6 +1040,47 @@ $target = [IntPtr]::new([Int64]${hwnd})
   });
 }
 
+function attachWallpaperToDesktopLevel(win) {
+  if (process.platform !== 'darwin' || !win || win.isDestroyed()) return;
+  try {
+    const handle = win.getNativeWindowHandle();
+    let ptr;
+    if (handle.length >= 8) {
+      ptr = handle.readBigUInt64LE(0);
+    } else {
+      ptr = handle.readUInt32LE(0);
+    }
+    // macOS: place window between desktop wallpaper and desktop icons
+    // using CGWindowLevelForKey(.desktopIconWindow) via Swift
+    const script = `import Cocoa
+let view = Unmanaged<NSView>.fromOpaque(UnsafeMutableRawPointer(bitPattern: ${ptr})!).takeUnretainedValue()
+guard let w = view.window else { exit(1) }
+w.level = NSWindow.Level(Int(CGWindowLevelForKey(.desktopIconWindow)))
+w.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+w.orderBack(nil)
+w.isOpaque = false
+w.backgroundColor = NSColor(red: 0.02, green: 0.023, blue: 0.031, alpha: 1)
+print("ok")
+`;
+    const child = spawn('/usr/bin/swift', ['-'], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 8000,
+    });
+    let stderr = '';
+    child.stderr.on('data', (d) => { stderr += d.toString(); });
+    child.on('error', (err) => {
+      console.warn('[Wallpaper] macOS swift spawn failed:', err.message);
+    });
+    child.on('close', (code) => {
+      if (code !== 0) console.warn('[Wallpaper] macOS desktop level attach failed (code ' + code + '):', stderr.trim());
+    });
+    child.stdin.write(script);
+    child.stdin.end();
+  } catch (e) {
+    console.warn('[Wallpaper] macOS desktop level attach error:', e.message);
+  }
+}
+
 function positionWallpaperWindow() {
   if (!wallpaperWindow || wallpaperWindow.isDestroyed()) return;
   const bounds = screen.getPrimaryDisplay().bounds;
@@ -1072,7 +1125,11 @@ function createWallpaperWindow(payload = {}) {
     if (!wallpaperWindow || wallpaperWindow.isDestroyed()) return;
     positionWallpaperWindow();
     wallpaperWindow.showInactive();
-    attachWallpaperToWorkerW(wallpaperWindow);
+    if (process.platform === 'win32') {
+      attachWallpaperToWorkerW(wallpaperWindow);
+    } else if (process.platform === 'darwin') {
+      attachWallpaperToDesktopLevel(wallpaperWindow);
+    }
     sendWallpaperState();
   });
   wallpaperWindow.webContents.once('did-finish-load', sendWallpaperState);
@@ -1351,9 +1408,15 @@ async function createWindow() {
     minHeight: 540,
     show: false,
     frame: false,
+    titleBarStyle: process.platform === 'darwin' ? 'customButtonsOnHover' : undefined,
+    trafficLightPosition: process.platform === 'darwin' ? { x: 18, y: 14 } : undefined,
     fullscreen: false,
-    transparent: true,
-    backgroundColor: '#00000000',
+    transparent: process.platform !== 'darwin',
+    backgroundColor: process.platform === 'darwin' ? '#010304' : '#00000000',
+    resizable: true,
+    maximizable: true,
+    minimizable: true,
+    fullscreenable: true,
     hasShadow: true,
     autoHideMenuBar: true,
     title: APP_NAME,
@@ -1384,6 +1447,9 @@ async function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
+    if (process.platform === 'darwin') {
+      mainWindow.setFullScreenable(true);
+    }
     mainWindow.show();
     sendWindowState(mainWindow);
   });

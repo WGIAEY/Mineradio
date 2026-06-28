@@ -48,6 +48,7 @@ body.desktop-shell #desktop-titlebar::after{content:none}
 .desktop-window-btn svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none}
 .desktop-window-btn:hover{background:rgba(244,210,138,.14);color:#fff1bd;transform:translateY(-1px)}
 .desktop-window-btn.close:hover{background:rgba(255,86,100,.86);color:#fff}
+body.mac-os .desktop-window-btn{display:none!important}
 .desktop-mode-btn{height:30px;min-width:78px;padding:0 12px;border:1px solid rgba(255,255,255,.08);border-radius:999px;background:rgba(4,8,10,.42);color:rgba(224,250,255,.70);font-family:inherit;font-size:11px;font-weight:760;letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background .18s,color .18s,transform .18s,border-color .18s,box-shadow .18s}
 .desktop-mode-btn::before{content:'';width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.28);box-shadow:0 0 0 rgba(255,83,103,0);transition:background .18s,box-shadow .18s}
 .desktop-mode-btn:hover{background:rgba(255,83,103,.10);border-color:rgba(255,83,103,.34);color:#fff;transform:translateY(-1px)}
@@ -101,6 +102,8 @@ body.custom-background-override #album-bg{opacity:0!important}
 body.render-deep-sleep #canvas-container,body.render-deep-sleep #idle-guide-canvas,body.render-deep-sleep #splash-canvas,body.render-deep-sleep #hand-canvas{opacity:0!important;visibility:hidden!important}
 body.splash-active:not(.splash-revealing) #canvas-container{opacity:.16;transform:scale(1)}
 body.splash-active.splash-revealing #canvas-container{opacity:1;transform:scale(1)}
+body.empty-home-active #canvas-container{pointer-events:none!important;cursor:default!important}
+body.empty-home-active #canvas-container canvas{pointer-events:none!important;cursor:default!important}
 #idle-guide-canvas{position:fixed;inset:0;z-index:2;width:100%;height:100%;pointer-events:none;opacity:0;transition:opacity .7s cubic-bezier(.22,1,.36,1)}
 body.idle-guide-on #idle-guide-canvas{opacity:1!important}
 body.home-wallpaper-preview #idle-guide-canvas{opacity:0!important;visibility:hidden!important}
@@ -1062,6 +1065,17 @@ body.desktop-shell.diy-mode #bottom-bar.stage-mode{left:50%;width:min(1080px,cal
 .fx-head-actions .fx-mini-btn{width:auto;min-width:58px;height:28px;padding:0 10px;flex:0 0 auto;border-radius:9px}
 .fx-title{font-size:14px;font-weight:500;letter-spacing:.6px;color:rgba(255,255,255,.95)}
 .fx-sub{font-size:10px;color:rgba(255,255,255,.32);margin-top:4px;letter-spacing:1px}
+.fx-search{position:relative;margin-bottom:12px}
+.fx-search input{width:100%;height:32px;padding:0 32px 0 12px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.04);color:rgba(255,255,255,.72);font-size:11px;outline:none;transition:border .22s,background .22s}
+.fx-search input::placeholder{color:rgba(255,255,255,.22)}
+.fx-search input:focus{border-color:rgba(0,245,212,.28);background:rgba(255,255,255,.06)}
+.fx-search-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:50%;color:rgba(255,255,255,.24);font-size:11px;cursor:pointer;transition:color .18s,background .18s;visibility:hidden}
+.fx-search-clear.visible{visibility:visible}
+.fx-search-clear:hover{color:#fff;background:rgba(255,255,255,.08)}
+.fx-search-highlight{outline:2px solid rgba(0,245,212,.45)!important;outline-offset:2px!important;border-radius:3px!important;background:rgba(0,245,212,.06)!important}
+.fx-search-dim{opacity:.18!important;pointer-events:none!important}
+.fx-tab-page:not(.active) .fx-search-highlight{outline:none!important}
+.fx-panel-tabs button[data-fx-tab].fx-search-tab-hint{color:rgba(0,245,212,.82)!important;box-shadow:0 1px 0 rgba(0,245,212,.35)}
 .fx-close{border:none;background:transparent;color:rgba(255,255,255,.42);font-size:22px;line-height:1;cursor:pointer;padding:0 2px}
 .fx-close:hover{color:#fff}
 .fx-section-label{display:flex;align-items:center;gap:8px;font-size:10px;color:rgba(0,245,212,.56);letter-spacing:1.2px;text-transform:uppercase;margin:18px 0 9px;font-weight:700}
@@ -2007,6 +2021,10 @@ html.control-glass-svg-ok #visual-guide-btn:hover{
   <div class="fx-head">
     <div><div class="fx-title">视觉控制台</div><div class="fx-sub">MINERADIO VISUALS · 鼠标移开自动隐藏</div></div>
   </div>
+  <div class="fx-search" id="fx-search">
+    <input id="fx-search-input" type="text" placeholder="搜索设置项…" autocomplete="off">
+    <span class="fx-search-clear" id="fx-search-clear" title="清除">✕</span>
+  </div>
 
   <div class="fx-section-label">视觉预设</div>
   <div class="preset-grid" id="preset-grid"></div>
@@ -2158,9 +2176,9 @@ html.control-glass-svg-ok #visual-guide-btn:hover{
         <div class="fx-toggle" id="t-desktopLyricsClickThrough" onclick="toggleFx('desktopLyricsClickThrough')" title="锁定后防误触；鼠标移到桌面歌词上按中键可锁定/解锁"><span>桌面歌词锁定</span><span class="dot"></span></div>
         <div class="fx-toggle" id="t-desktopLyricsCinema" onclick="toggleFx('desktopLyricsCinema')" title="桌面歌词绑定鼓点电影震动，基础漂浮始终保留"><span>桌面歌词电影震动</span><span class="dot"></span></div>
         <div class="fx-toggle" id="t-desktopLyricsHighlight" onclick="toggleFx('desktopLyricsHighlight')" title="桌面歌词按播放进度高亮"><span>桌面歌词高亮跟随</span><span class="dot"></span></div>
-        <div class="fx-toggle dev-locked" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')" title="开发中，暂不可用"><span>壁纸模式<em class="fx-dev-badge">开发中</em></span><span class="dot"></span></div>
       </div>
       <div class="fx-section-label">桌面 / 壁纸</div>
+      <div class="fx-toggle" id="t-wallpaperMode" onclick="toggleFx('wallpaperMode')" title="粒子动效全屏桌面壁纸" style="margin-bottom:10px"><span>🎬 壁纸模式</span><span class="dot"></span></div>
       <div class="fx-slider"><label>桌面歌词大小</label><input id="fx-desktoplyricssize" type="range" min="0.72" max="1.55" step="0.01"><output></output></div>
       <div class="fx-slider"><label>桌面歌词透明</label><input id="fx-desktoplyricsopacity" type="range" min="0.28" max="1" step="0.01"><output></output></div>
       <div class="fx-slider"><label>桌面歌词高度</label><input id="fx-desktoplyricsy" type="range" min="0.08" max="0.92" step="0.01"><output></output></div>
@@ -2172,7 +2190,7 @@ html.control-glass-svg-ok #visual-guide-btn:hover{
         <button data-desktop-lyrics-fps="120">120</button>
         <button data-desktop-lyrics-fps="0">无上限</button>
       </div>
-      <div class="fx-slider dev-locked"><label>壁纸透明度</label><input id="fx-wallpaperopacity" type="range" min="0.35" max="1" step="0.01" disabled><output></output></div>
+      <div class="fx-slider"><label>壁纸透明度</label><input id="fx-wallpaperopacity" type="range" min="0.35" max="1" step="0.01"><output></output></div>
     </div>
   </div>
 
@@ -3356,14 +3374,12 @@ function packagedDefaultLyricLayoutRaw() {
   return Object.assign({ desktopLyricsSchema: 'desktop-lyrics-v3' }, clonePackagedDefaultFxSnapshot());
 }
 var DEVELOPMENT_LOCKED_FX = {
-  wallpaperMode: true
 };
 function isDevelopmentLockedFx(key) {
   return !!DEVELOPMENT_LOCKED_FX[key];
 }
 function normalizeDevelopmentLockedFxState() {
-  if (!fx) return;
-  fx.wallpaperMode = false;
+  // Previously forced wallpaperMode off; now managed via DEVELOPMENT_LOCKED_FX only.
 }
 function readSavedPlaybackVisualPreset() {
   try {
@@ -5514,6 +5530,7 @@ var UI_HIT_SELECTOR = '#search-area,#top-right,#fullscreen-diy-zone,#fx-panel,#f
 
 function isPointerOverUi(e) {
   if (!e) return false;
+  if (document.body.classList.contains('empty-home-active')) return true;
   var el = document.elementFromPoint(e.clientX, e.clientY);
   return !!(el && el.closest && el.closest(UI_HIT_SELECTOR));
 }
@@ -14964,6 +14981,10 @@ renderer.domElement.addEventListener('contextmenu', function(e){
 //   side 模式: 常驻不再用半屏预览区接管滚轮
 //   stage 模式: 鼠标 y > 60% 屏幕高
 //   shift + wheel: 强制滚卡片
+var shelfWheelAccumulator = 0;
+var shelfWheelTimer = null;
+var clWheelAccumulator = 0;
+var clWheelTimer = null;
 var wheelOverShelf = false;
 renderer.domElement.addEventListener('wheel', function(e){
   if (isPointerOverUi(e)) return;
@@ -14979,7 +15000,13 @@ renderer.domElement.addEventListener('wheel', function(e){
       var panelScreenHit = !rowHit && !panelHit && cl.screenContainsPanel ? cl.screenContainsPanel(e.clientX, e.clientY) : false;
       if (!rowHit && !panelHit && !panelScreenHit) return;
       e.preventDefault(); e.stopImmediatePropagation();
-      cl.scrollBy(e.deltaY > 0 ? 1 : -1);
+      if (clWheelTimer) clearTimeout(clWheelTimer);
+      clWheelTimer = setTimeout(function() { clWheelAccumulator = 0; }, 150);
+      clWheelAccumulator += e.deltaY;
+      if (Math.abs(clWheelAccumulator) >= 60) {
+        cl.scrollBy(clWheelAccumulator > 0 ? 1 : -1);
+        clWheelAccumulator = 0;
+      }
       return;
     }
   }
@@ -14998,7 +15025,13 @@ renderer.domElement.addEventListener('wheel', function(e){
   if (inShelfArea) {
     e.preventDefault();
     e.stopImmediatePropagation();
-    shelfManager.scrollBy(e.deltaY > 0 ? 1 : -1);
+    if (shelfWheelTimer) clearTimeout(shelfWheelTimer);
+    shelfWheelTimer = setTimeout(function() { shelfWheelAccumulator = 0; }, 150);
+    shelfWheelAccumulator += e.deltaY;
+    if (Math.abs(shelfWheelAccumulator) >= 60) {
+      shelfManager.scrollBy(shelfWheelAccumulator > 0 ? 1 : -1);
+      shelfWheelAccumulator = 0;
+    }
   }
 }, { passive: false, capture: true });
 
@@ -15374,12 +15407,12 @@ function beginListenSession(song, context) {
     maxProgress: 0,
   };
 }
-function updateListenStatsTick(force) {
+function updateListenStatsTick(force, noRestart) {
   if (!audio || !audio.duration || audio.paused) return;
   var song = currentCoverSong();
   if (!song) return;
   var key = queueItemKey(song);
-  if (!listenSession || listenSession.key !== key) beginListenSession(song, activeRadioContext);
+  if (!noRestart && (!listenSession || listenSession.key !== key)) beginListenSession(song, activeRadioContext);
   if (!listenSession) return;
   var now = Date.now();
   var audioTime = isFinite(audio.currentTime) ? audio.currentTime : 0;
@@ -15394,7 +15427,7 @@ function updateListenStatsTick(force) {
 }
 function finalizeListenSession(completed) {
   if (!listenSession) return;
-  updateListenStatsTick(true);
+  updateListenStatsTick(true, true);
   var session = listenSession;
   listenSession = null;
   var effective = completed || session.listenMs >= 45000 || session.maxProgress >= 0.5 || (!audio || !audio.duration ? session.listenMs >= 30000 : false);
@@ -16229,7 +16262,7 @@ function isHomeBlankDismissClick(e) {
   var home = document.getElementById('empty-home');
   if (!home) return false;
   var homeRect = home.getBoundingClientRect();
-  if (!isPointInsideRectWithPad(x, y, homeRect, 0)) return false;
+  if (!isPointInsideRectWithPad(x, y, homeRect, 0)) return true;
   if (isPointNearHomeContent(x, y)) return false;
   return true;
 }
@@ -21364,7 +21397,7 @@ function updateDevelopmentFxControls() {
     ['desktopLyricsClickThrough', 't-desktopLyricsClickThrough', '锁定后防误触；鼠标移到桌面歌词上按中键可锁定/解锁'],
     ['desktopLyricsCinema', 't-desktopLyricsCinema', '桌面歌词绑定鼓点电影震动，基础漂浮始终保留'],
     ['desktopLyricsHighlight', 't-desktopLyricsHighlight', '桌面歌词按播放进度高亮'],
-    ['wallpaperMode', 't-wallpaperMode', '开发中，暂不可用']
+    ['wallpaperMode', 't-wallpaperMode', '粒子动效全屏桌面壁纸']
   ].forEach(function(item){
     var locked = isDevelopmentLockedFx(item[0]);
     var el = document.getElementById(item[1]);
@@ -21663,6 +21696,131 @@ function organizeFxPanel() {
   setFxPanelTab(fxPanelTab);
 }
 
+function initFxSearch() {
+  var input = document.getElementById('fx-search-input');
+  var clear = document.getElementById('fx-search-clear');
+  if (!input || !clear) return;
+  var panel = document.getElementById('fx-panel');
+  var timer = null;
+  var lastQuery = '';
+  var activeIdx = -1;
+  var activeMatches = [];
+  function collectSearchItems() {
+    var items = [];
+    var selector = '.fx-section-label, .fx-toggle, .fx-slider, .fx-seg, .fx-font-grid, .preset-card, .user-archive-card, .fx-mini-btn, button[data-fx-tab], .lyric-color-row, .fx-fold-head';
+    panel.querySelectorAll(selector).forEach(function(el) {
+      if (el.closest('#fx-search')) return;
+      var text = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!text) return;
+      items.push({ el: el, text: text });
+    });
+    return items;
+  }
+  var searchItems = [];
+  function refreshItems() { searchItems = collectSearchItems(); }
+  function clearHighlights() {
+    activeMatches = [];
+    activeIdx = -1;
+    panel.querySelectorAll('.fx-search-highlight').forEach(function(el) { el.classList.remove('fx-search-highlight'); });
+    panel.querySelectorAll('.fx-search-dim').forEach(function(el) { el.classList.remove('fx-search-dim'); });
+    panel.querySelectorAll('.fx-panel-tabs button.fx-search-tab-hint').forEach(function(b) { b.classList.remove('fx-search-tab-hint'); });
+    panel.querySelectorAll('.fx-tab-page').forEach(function(p) { p.classList.remove('fx-search-dim'); });
+    panel.querySelectorAll('.fx-fold').forEach(function(f) { f.classList.remove('fx-search-dim'); });
+  }
+  function showMatch(idx) {
+    if (idx < 0 || idx >= activeMatches.length) return;
+    var match = activeMatches[idx];
+    var el = match.el;
+    // switch to correct tab
+    var page = el.closest('.fx-tab-page');
+    if (page) {
+      var tabName = page.getAttribute('data-fx-page');
+      if (tabName) setFxPanelTab(tabName);
+    }
+    // open any ancestor fold
+    var fold = el.closest('.fx-fold');
+    if (fold) fold.classList.add('open');
+    // scroll into view
+    setTimeout(function() { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
+    // highlight
+    panel.querySelectorAll('.fx-search-highlight').forEach(function(e) { e.classList.remove('fx-search-highlight'); });
+    el.classList.add('fx-search-highlight');
+    activeIdx = idx;
+  }
+  function doSearch(query) {
+    query = (query || '').trim().toLowerCase();
+    if (query === lastQuery) return;
+    lastQuery = query;
+    clearHighlights();
+    if (!query) {
+      clear.classList.remove('visible');
+      return;
+    }
+    clear.classList.add('visible');
+    if (!searchItems.length) refreshItems();
+    var terms = query.split(/\s+/).filter(Boolean);
+    // find all matches
+    activeMatches = [];
+    var matchSet = new Set();
+    searchItems.forEach(function(item) {
+      var score = 0;
+      for (var i = 0; i < terms.length; i++) {
+        if (item.text.indexOf(terms[i]) !== -1) score++;
+      }
+      if (score === terms.length) {
+        if (!matchSet.has(item.el)) {
+          matchSet.add(item.el);
+          activeMatches.push(item);
+        }
+      }
+    });
+    // dim non-matching toggles & sliders (only within active tab pages)
+    panel.querySelectorAll('.fx-tab-page.active .fx-toggle, .fx-tab-page.active .fx-slider, .fx-tab-page.active .fx-seg, .fx-tab-page.active .fx-section-label').forEach(function(el) {
+      if (!matchSet.has(el)) el.classList.add('fx-search-dim');
+    });
+    // dim entire tab pages with no matches
+    panel.querySelectorAll('.fx-tab-page').forEach(function(page) {
+      var hasMatch = page.querySelector('.fx-search-highlight') || Array.from(activeMatches).some(function(m) { return page.contains(m.el); });
+      if (!hasMatch) page.classList.add('fx-search-dim');
+    });
+    // hint tabs that contain matches
+    var hintedTabs = new Set();
+    activeMatches.forEach(function(m) {
+      var page = m.el.closest('.fx-tab-page');
+      if (page) hintedTabs.add(page.getAttribute('data-fx-page'));
+    });
+    panel.querySelectorAll('.fx-panel-tabs button[data-fx-tab]').forEach(function(b) {
+      if (hintedTabs.has(b.getAttribute('data-fx-tab'))) b.classList.add('fx-search-tab-hint');
+    });
+    // show first match
+    if (activeMatches.length) showMatch(0);
+  }
+  input.addEventListener('input', function() {
+    clearTimeout(timer);
+    timer = setTimeout(function() { doSearch(input.value); }, 120);
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { input.value = ''; doSearch(''); input.blur(); return; }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeMatches.length > 1) {
+        activeIdx = (activeIdx + 1) % activeMatches.length;
+        showMatch(activeIdx);
+      }
+    }
+  });
+  input.addEventListener('focus', function() { refreshItems(); if (input.value) doSearch(input.value); });
+  clear.addEventListener('click', function() { input.value = ''; doSearch(''); input.focus(); });
+  // re-collect items when panel is reorganized
+  var origOrganize = organizeFxPanel;
+  organizeFxPanel = function() {
+    origOrganize();
+    refreshItems();
+    if (input.value) doSearch(input.value);
+  };
+}
+document.addEventListener('DOMContentLoaded', function() { setTimeout(initFxSearch, 600); });
+
 function fxControlBlock(id) {
   var el = document.getElementById(id);
   if (!el) return null;
@@ -21848,10 +22006,11 @@ function normalizeHotkeyEvent(e) {
   return mods.concat([code]).join('+');
 }
 function hotkeyDisplayPart(part) {
+  var isMac = document.body.classList.contains('mac-os');
   if (part === 'Ctrl') return 'Ctrl';
-  if (part === 'Alt') return 'Alt';
+  if (part === 'Alt') return isMac ? 'Opt' : 'Alt';
   if (part === 'Shift') return 'Shift';
-  if (part === 'Meta') return 'Win';
+  if (part === 'Meta') return isMac ? 'Cmd' : 'Win';
   if (part === 'Space') return 'Space';
   if (part === 'ArrowLeft') return 'Left';
   if (part === 'ArrowRight') return 'Right';
@@ -21870,11 +22029,12 @@ function formatHotkey(hotkey) {
 function hotkeyToAccelerator(hotkey) {
   var parts = String(hotkey || '').split('+').filter(Boolean);
   if (!parts.length) return '';
+  var isMac = document.body.classList.contains('mac-os');
   return parts.map(function(part){
     if (part === 'Ctrl') return 'Control';
     if (part === 'Alt') return 'Alt';
     if (part === 'Shift') return 'Shift';
-    if (part === 'Meta') return 'Super';
+    if (part === 'Meta') return isMac ? 'Cmd' : 'Super';
     if (part === 'Space') return 'Space';
     if (part === 'ArrowLeft') return 'Left';
     if (part === 'ArrowRight') return 'Right';

@@ -8,6 +8,8 @@
   "private": true,
   "scripts": {
     "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:mac:dir": "electron-builder --mac dir",
     "build:win": "electron-builder --win nsis",
     "build:win:dir": "electron-builder --win dir"
   },
@@ -33,6 +35,45 @@
       "public/index.html"
     ],
     "asar": false,
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.music",
+      "type": "development",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "minimumSystemVersion": "11.0",
+      "electronLanguages": ["zh-CN", "en"],
+      "extendInfo": {
+        "LSMinimumSystemVersion": "11.0",
+        "LSRequiresNativeExecution": true,
+        "NSHighResolutionCapable": true,
+        "NSSupportsAutomaticGraphicsSwitching": true,
+        "LSApplicationCategoryType": "public.app-category.music",
+        "NSMicrophoneUsageDescription": "Mineradio 使用麦克风进行节奏分析和可视化。",
+        "NSCameraUsageDescription": "Mineradio 使用相机进行视觉交互。"
+      },
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "artifactName": "Mineradio-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Mineradio ${version}",
+      "icon": "build/icon.png",
+      "iconSize": 80,
+      "window": {
+        "width": 500,
+        "height": 380
+      }
+    },
     "win": {
       "executableName": "Mineradio",
       "icon": "build/icon.ico",

@@ -1,0 +1,74 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── macOS builds ──────────────────────────────────────────────
+  macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build macOS (${{ matrix.arch }})
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --mac --${{ matrix.arch }}
+
+      - name: Rename artifacts (apple / intel)
+        run: node build/rename-mac-artifacts.js
+
+      - name: Upload DMG
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Mineradio-*-${{ matrix.arch == 'arm64' && 'apple' || 'intel' }}.dmg
+
+      - name: Upload ZIP
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Mineradio-*-${{ matrix.arch == 'arm64' && 'apple' || 'intel' }}.zip
+
+  # ── Windows build ─────────────────────────────────────────────
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows
+        run: npx electron-builder --win nsis --x64
+
+      - name: Upload Setup
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Mineradio-*-Setup.exe
+
+      - name: Upload latest.yml
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/latest.yml
