@@ -60,7 +60,7 @@ sudo xattr -rd com.apple.quarantine /Applications/Mineradio.app
 
 ## 当前版本
 
-当前版本：`1.1.1`
+当前版本：`1.1.2`
 
 > 安全提示：`v1.0.10` 及更早旧安装包不再建议继续安装或传播，请先隔离旧安装包。
 
