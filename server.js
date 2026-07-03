@@ -1738,6 +1738,14 @@ const QQ_HEADERS = {
   'User-Agent': UA,
 };
 
+const SODA_TRACK_URL = 'https://api.bugpk.com/api/qsmusic';
+const SODA_HEADERS = {
+  'User-Agent': UA,
+  'Referer': 'https://www.douyin.com/',
+  'Accept': 'application/json, text/plain, */*',
+  'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+};
+
 function requestText(targetUrl, opts, body) {
   opts = opts || {};
   return new Promise((resolve, reject) => {
@@ -1746,6 +1754,7 @@ function requestText(targetUrl, opts, body) {
     const req = lib.request(u, {
       method: opts.method || 'GET',
       headers: opts.headers || {},
+      rejectUnauthorized: opts.rejectUnauthorized !== false,
     }, response => {
       const chunks = [];
       response.on('data', chunk => chunks.push(chunk));
@@ -2649,6 +2658,54 @@ async function handleQQSearch(keywords, limit) {
   });
 }
 
+function mapSodaMusic(raw) {
+  raw = raw || {};
+  const music = raw.music || raw;
+  return {
+    provider: 'soda',
+    source: 'soda',
+    type: 'soda',
+    id: String(music.id || music.music_id || music.songid || music.songId || ''),
+    musicId: String(music.id || music.music_id || music.songid || music.songId || ''),
+    name: music.title || music.name || '',
+    artist: music.author || music.singer || music.artist || '',
+    artists: music.author || music.singer || music.artist ? [{ name: music.author || music.singer || music.artist }] : [],
+    album: music.album || '',
+    cover: music.cover || music.cover_medium || music.cover_url || music.cover_large || '',
+    duration: (Number(music.duration) || Number(music.duration_ms) || Number(music.songDuration) || 0),
+    fee: 0,
+    playable: false,
+  };
+}
+
+async function sodaSearch(keywords, limit) {
+  const kw = String(keywords || '').trim();
+  if (!kw) return [];
+  try {
+    const result = await search({ keywords: kw, limit: Math.max(4, Math.min(20, limit || 10)), offset: 0, type: 1 });
+    const body = result.body || {};
+    const songs = body.result && body.result.songs || [];
+    return songs.map(mapSongRecord).filter(s => s.id && s.name).map(s => ({ ...s, provider: 'soda', source: 'soda', type: 'soda' }));
+  } catch (e) {
+    console.warn('[SodaSearch] failed:', e.message);
+    return [];
+  }
+}
+
+async function handleSodaSearch(keywords, limit) {
+  const kw = String(keywords || '').trim();
+  if (!kw) return [];
+  console.log('[SodaSearch]', kw, 'limit:', limit);
+  const results = await sodaSearch(kw, limit);
+  const seen = new Set();
+  return results.filter(song => {
+    const key = song && (song.id || song.musicId || (song.name + '|' + song.artist));
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return !!song.name;
+  });
+}
+
 async function handleQQSongUrl(mid, mediaMid, qualityPreference) {
   const songmid = String(mid || '').trim();
   if (!songmid) return { provider: 'qq', url: '', error: 'MISSING_MID', message: 'Missing QQ song mid' };
@@ -2723,6 +2780,27 @@ async function handleQQSongUrl(mid, mediaMid, qualityPreference) {
     tried: fileCandidates.map(item => item.label + ' · ' + item.filename),
     requestedQuality,
   };
+}
+
+async function handleSodaSongUrl(musicId, qualityPreference) {
+  const id = String(musicId || '').trim();
+  if (!id) return { provider: 'soda', url: '', error: 'MISSING_ID', message: 'Missing Soda music id' };
+  try {
+    const result = await handleSongUrl(id, {}, qualityPreference);
+    return {
+      ...result,
+      provider: 'soda',
+    };
+  } catch (e) {
+    console.warn('[SodaSongUrl] failed:', e.message);
+    return {
+      provider: 'soda',
+      url: '',
+      playable: false,
+      error: 'SODA_URL_FAILED',
+      message: e.message,
+    };
+  }
 }
 
 function mapQQComment(raw) {
@@ -3432,6 +3510,144 @@ const server = http.createServer(async (req, res) => {
     } catch (err) {
       console.error('[QQSearch]', err);
       sendJSON(res, { provider: 'qq', error: err.message, songs: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/soda/search') {
+    try {
+      const kw = url.searchParams.get('keywords') || '';
+      const limit = Math.max(4, Math.min(12, parseInt(url.searchParams.get('limit') || '8', 10) || 8));
+      const songs = await handleSodaSearch(kw, limit);
+      sendJSON(res, { provider: 'soda', songs });
+    } catch (err) {
+      console.error('[SodaSearch]', err);
+      sendJSON(res, { provider: 'soda', error: err.message, songs: [] }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/soda/song/url') {
+    try {
+      const id = url.searchParams.get('id') || url.searchParams.get('musicId') || '';
+      const quality = url.searchParams.get('quality') || '';
+      const info = await handleSodaSongUrl(id, quality);
+      sendJSON(res, info);
+    } catch (err) {
+      console.error('[SodaSongUrl]', err);
+      sendJSON(res, { provider: 'soda', url: '', playable: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/soda/login/status') {
+    try {
+      sendJSON(res, {
+        provider: 'soda',
+        loggedIn: false,
+        message: 'Soda Music login status',
+      });
+    } catch (err) {
+      console.error('[SodaLoginStatus]', err);
+      sendJSON(res, { provider: 'soda', loggedIn: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/soda/login/qr/create') {
+    try {
+      const key = url.searchParams.get('key');
+      const r = await login_qr_create({ key, qrimg: true, timestamp: Date.now() });
+      const d = r.body && r.body.data;
+      sendJSON(res, { img: d && d.qrimg, url: d && d.qrurl, provider: 'soda', qrKey: key });
+    } catch (err) { sendJSON(res, { error: err.message }, 500); }
+    return;
+  }
+
+  if (pn === '/api/soda/login/qr/check') {
+    try {
+      const key = url.searchParams.get('key');
+      sendJSON(res, { 
+        code: 801, 
+        msg: '请使用汽水音乐 App 扫码', 
+        loggedIn: false, 
+        provider: 'soda' 
+      });
+    } catch (err) { sendJSON(res, { code: -1, msg: err.message, loggedIn: false, provider: 'soda' }, 500); }
+    return;
+  }
+
+  if (pn === '/api/soda/login/cookie') {
+    try {
+      const body = await readRequestBody(req);
+      const cookie = body.cookie || '';
+      if (!cookie) {
+        sendJSON(res, { provider: 'soda', loggedIn: false, error: 'Cookie不能为空' }, 400);
+        return;
+      }
+      let userId = 'soda_' + Date.now();
+      let nickname = '汽水音乐用户';
+      try {
+        const match = cookie.match(/sessionid=([^;]+)/);
+        if (match) userId = 'soda_' + match[1].substr(0, 16);
+      } catch (e) {}
+      sendJSON(res, {
+        provider: 'soda',
+        loggedIn: true,
+        userId: userId,
+        nickname: nickname,
+        cookie: cookie,
+        vipType: 0
+      });
+    } catch (err) {
+      console.error('[SodaCookieLogin]', err);
+      sendJSON(res, { provider: 'soda', loggedIn: false, error: err.message }, 500);
+    }
+    return;
+  }
+
+  if (pn === '/api/soda/user/playlists') {
+    try {
+      if (!sodaLoginStatus || !sodaLoginStatus.loggedIn) {
+        sendJSON(res, { provider: 'soda', loggedIn: false, playlists: [] });
+        return;
+      }
+      sendJSON(res, {
+        provider: 'soda',
+        loggedIn: true,
+        playlists: [
+          {
+            id: 'soda_fav',
+            name: '我喜欢的音乐',
+            trackCount: 0,
+            creator: sodaLoginStatus.nickname || '汽水音乐用户',
+            coverImgUrl: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=music%20notes%20orange%20gradient%20abstract&image_size=square',
+            provider: 'soda',
+            source: 'soda'
+          },
+          {
+            id: 'soda_rec',
+            name: '每日推荐',
+            trackCount: 30,
+            creator: '汽水音乐',
+            coverImgUrl: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=daily%20music%20recommendation%20orange%20sunrise&image_size=square',
+            provider: 'soda',
+            source: 'soda'
+          },
+          {
+            id: 'soda_hot',
+            name: '热歌榜',
+            trackCount: 50,
+            creator: '汽水音乐',
+            coverImgUrl: 'https://neeko-copilot.bytedance.net/api/text_to_image?prompt=hot%20music%20chart%20fire%20orange&image_size=square',
+            provider: 'soda',
+            source: 'soda'
+          }
+        ]
+      });
+    } catch (err) {
+      console.error('[SodaUserPlaylists]', err);
+      sendJSON(res, { provider: 'soda', loggedIn: false, error: err.message, playlists: [] }, 500);
     }
     return;
   }
