@@ -1,8 +1,8 @@
 {
   "name": "mineradio",
   "productName": "Mineradio",
-  "version": "1.1.1",
-  "description": "沉浸式音乐播放器，融合天气电台、歌词舞台、粒子视觉和 3D 歌单架。",
+  "version": "1.1.2",
+  "description": "沉浸式音乐播放器，融合网易云音乐、QQ音乐、汽水音乐三大平台，天气电台、歌词舞台、粒子视觉和 3D 歌单架。",
   "author": "Mineradio",
   "main": "desktop/main.js",
   "private": true,
@@ -64,7 +64,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "XxHuberrr",
+        "owner": "WGIAEY",
         "repo": "Mineradio"
       }
     ]
@@ -72,7 +72,7 @@
   "mineradio": {
     "update": {
       "provider": "github",
-      "owner": "XxHuberrr",
+      "owner": "WGIAEY",
       "repo": "Mineradio",
       "preview": true,
       "preferMirrors": true,

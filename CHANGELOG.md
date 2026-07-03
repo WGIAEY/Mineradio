@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.1.2
+
+- 添加汽水音乐平台支持：搜索、登录态与歌单接入
+- 三平台账号同时展示：网易云音乐、QQ音乐、汽水音乐
+- DIY 按钮移至右上角，与其他按钮同显隐
+- 简化胶囊提示文字，删除多余的"账号"二字
+- 更新版本号至 1.1.2
+
 ## v1.1.1
 
 - P0 installer safety fix: installation now defaults to the first available non-C drive from `D:\Mineradio` through `Z:\Mineradio`; it falls back to `C:\Mineradio` only when no D-Z drive exists.
